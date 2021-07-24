@@ -1,0 +1,16 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context="com.chijo.scanner.DocumentListActivity">
+
+    <item
+        android:id="@+id/action_document_help"
+        android:orderInCategory="100"
+        android:title="@string/action_document_help"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_text_detect"
+        android:orderInCategory="100"
+        android:title="@string/action_detect_text"
+        app:showAsAction="never" />
+</menu>
