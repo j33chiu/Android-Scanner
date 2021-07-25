@@ -129,9 +129,19 @@ public class DocumentListAdapter extends RecyclerView.Adapter<DocumentListAdapte
         Document doc = mData.get(position);
         mData.remove(position);
         notifyItemRemoved(position);
-        archive(doc);
-        //undo option:
-        showUndoSnackbar(doc, position);
+        if(doc.isArchived()) {
+            //fully delete from device
+            mDataFull.remove(doc);
+            permDelete(doc);
+        } else {
+            archive(doc);
+            //undo option:
+            showUndoSnackbar(doc, position);
+        }
+    }
+
+    private void permDelete(Document doc) {
+        FileHelper.deleteDocument(doc);
     }
 
     private void archive(Document doc) {

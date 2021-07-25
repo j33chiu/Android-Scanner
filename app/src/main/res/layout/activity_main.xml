@@ -37,11 +37,11 @@
         android:id="@+id/archive_toggle_fab"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="top|end"
+        android:layout_gravity="bottom|end"
         app:fabSize="normal"
         android:scaleType="center"
-        app:layout_anchor="@id/fab"
         android:layout_marginBottom="85dp"
+        android:layout_marginEnd="16dp"
         app:srcCompat="@drawable/ic_show_archive" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

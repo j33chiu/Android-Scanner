@@ -130,6 +130,24 @@ public class FileHelper {
         return deleted;
     }
 
+    public static boolean deleteDocument(Document doc) {
+        return deleteDocument(doc.getPath());
+    }
+
+    public static boolean deleteDocument(String path) {
+        File documentFolder = new File(path);
+        if(!documentFolder.exists()) return false;
+        File[] files = documentFolder.listFiles();
+        if(files == null) return false;
+        //delete each file
+        for(File f : files) {
+            f.delete();
+        }
+        //delete directory
+        documentFolder.delete();
+        return true;
+    }
+
     private static String removeExt(String filename) {
         int i = filename.lastIndexOf(".");
         if (i == -1) return filename;

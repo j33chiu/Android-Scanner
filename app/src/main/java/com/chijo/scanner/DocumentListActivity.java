@@ -37,6 +37,7 @@ import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.EditText;
+import android.widget.Toast;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.LoaderCallbackInterface;
@@ -78,7 +79,6 @@ public class DocumentListActivity extends AppCompatActivity implements DocumentL
 
     private boolean archiveMode = false;
 
-    //TODO: <PRIORITY> add archive list and ability to permadelete or restore
     //TODO: start file explorer activity to create new document from files on device
     //TODO: use shared prefs to store path to each document, as well as the document info
 
@@ -104,7 +104,6 @@ public class DocumentListActivity extends AppCompatActivity implements DocumentL
             }
         });
 
-        //TODO: make the button actions cleaner (animate hide/show, move visible fabs to bottom right)
         FloatingActionButton archiveFab = findViewById(R.id.archive_toggle_fab);
         archiveFab.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -113,10 +112,12 @@ public class DocumentListActivity extends AppCompatActivity implements DocumentL
                 documentListAdapter.toggleShowArchived(archiveMode);
                 if(archiveMode) {
                     fab.hide();
+                    ViewAnimations.archiveFabMove(view, true);
                     toolbar.setTitle(R.string.action_label_archive);
                 }
                 else {
                     fab.show();
+                    ViewAnimations.archiveFabMove(view, false);
                     toolbar.setTitle(R.string.action_label_documents);
                 }
             }
