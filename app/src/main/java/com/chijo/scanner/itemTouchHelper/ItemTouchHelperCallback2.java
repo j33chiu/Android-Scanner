@@ -10,6 +10,7 @@ import com.chijo.scanner.DocumentViewAdapter;
 public class ItemTouchHelperCallback2 extends ItemTouchHelper.Callback {
 
     final DocumentListAdapter adapter;
+    private boolean itemViewSwipeEnabled = true;
 
     public ItemTouchHelperCallback2(DocumentListAdapter adapter) {
         this.adapter = adapter;
@@ -22,7 +23,7 @@ public class ItemTouchHelperCallback2 extends ItemTouchHelper.Callback {
 
     @Override
     public boolean isItemViewSwipeEnabled() {
-        return true;
+        return itemViewSwipeEnabled;
     }
 
     @Override
@@ -41,6 +42,10 @@ public class ItemTouchHelperCallback2 extends ItemTouchHelper.Callback {
     @Override
     public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
         adapter.onItemSwiped(viewHolder.getAdapterPosition());
+    }
+
+    public void setItemViewSwipeEnabled(boolean itemViewSwipeEnabled) {
+        this.itemViewSwipeEnabled = itemViewSwipeEnabled;
     }
 
 }

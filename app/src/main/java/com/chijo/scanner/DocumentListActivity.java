@@ -5,21 +5,15 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
-import android.media.ExifInterface;
-import android.net.Uri;
 import android.os.Bundle;
 
 import com.chijo.scanner.itemTouchHelper.ItemTouchHelperCallback2;
 import com.facebook.drawee.backends.pipeline.Fresco;
-import com.facebook.drawee.view.SimpleDraweeView;
-import com.facebook.imagepipeline.common.ResizeOptions;
 import com.facebook.imagepipeline.core.ImagePipelineConfig;
 import com.facebook.imagepipeline.core.ImageTranscoderType;
 import com.facebook.imagepipeline.core.MemoryChunkType;
-import com.facebook.imagepipeline.request.ImageRequest;
-import com.facebook.imagepipeline.request.ImageRequestBuilder;
+import com.facebook.imagepipeline.request.Postprocessor;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import androidx.annotation.NonNull;
@@ -36,22 +30,14 @@ import android.text.Spanned;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.EditText;
-import android.widget.Toast;
-
-import org.opencv.android.BaseLoaderCallback;
-import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
-import org.opencv.core.Mat;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.net.URI;
 import java.util.ArrayList;
-import java.util.Comparator;
 
 public class DocumentListActivity extends AppCompatActivity implements DocumentListAdapter.ItemClickListener{
 
@@ -64,6 +50,8 @@ public class DocumentListActivity extends AppCompatActivity implements DocumentL
     private final int DOCUMENT_OPEN_REQUEST_CODE = 2;
 
     private final int CAMERA_LAUNCH_MODE = 0;
+
+    private ItemTouchHelper.Callback callback;
 
     private SearchView searchView;
     private String invalidChars = "\n";
@@ -109,6 +97,10 @@ public class DocumentListActivity extends AppCompatActivity implements DocumentL
             @Override
             public void onClick(View view) {
                 archiveMode = !archiveMode;
+                //reset selected
+                documentListAdapter.resetSelected();
+                ((ItemTouchHelperCallback2)callback).setItemViewSwipeEnabled(true);
+                //done resetting
                 documentListAdapter.toggleShowArchived(archiveMode);
                 if(archiveMode) {
                     fab.hide();
@@ -134,7 +126,7 @@ public class DocumentListActivity extends AppCompatActivity implements DocumentL
         documentListView.setAdapter(documentListAdapter);
 
         //itemtouchhelper
-        ItemTouchHelper.Callback callback = new ItemTouchHelperCallback2(documentListAdapter);
+        callback = new ItemTouchHelperCallback2(documentListAdapter);
         ItemTouchHelper touchHelper = new ItemTouchHelper(callback);
         touchHelper.attachToRecyclerView(documentListView);
     }
@@ -243,15 +235,40 @@ public class DocumentListActivity extends AppCompatActivity implements DocumentL
     }
 
     @Override
-    public void onItemClick(View view, int position) {
-        Document doc = documentListAdapter.getItem(position);
-        //open document viewer
-        openDocViewer(doc.getDocumentName(), doc.getPath());
+    public void onItemClick(View view, int position, boolean isSelecting) {
+        if (isSelecting) {
+            int selected = documentListAdapter.getSelected();
+            if (selected == 0) {
+                documentListAdapter.setSelect(false);
+                ((ItemTouchHelperCallback2)callback).setItemViewSwipeEnabled(true);
+                Toolbar tb = findViewById(R.id.toolbar);
+                tb.setTitle(archiveMode ? R.string.action_label_archive : R.string.action_label_documents);
+            } else {
+                Toolbar tb = findViewById(R.id.toolbar);
+                tb.setTitle("Selected " + selected);
+            }
+        } else {
+            Document doc = documentListAdapter.getItem(position);
+            //open document viewer
+            openDocViewer(doc.getDocumentName(), doc.getPath());
+        }
     }
 
     @Override
     public void onItemLongClick(View view, int position) {
         //TODO: allow merging, group archiving
+        documentListAdapter.setSelect(true);
+        ((ItemTouchHelperCallback2)callback).setItemViewSwipeEnabled(false);
+        int selected = documentListAdapter.getSelected();
+        if (selected == 0) {
+            documentListAdapter.setSelect(false);
+            ((ItemTouchHelperCallback2)callback).setItemViewSwipeEnabled(true);
+            Toolbar tb = findViewById(R.id.toolbar);
+            tb.setTitle(archiveMode ? R.string.action_label_archive : R.string.action_label_documents);
+        } else {
+            Toolbar tb = findViewById(R.id.toolbar);
+            tb.setTitle("Selected " + selected);
+        }
     }
 
     private void openDocViewer(String docName, String docPath) {

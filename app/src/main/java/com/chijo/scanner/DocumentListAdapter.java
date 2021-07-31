@@ -7,21 +7,30 @@ import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.CheckBox;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.chijo.scanner.itemTouchHelper.ItemTouchHelperAdapter;
+import com.facebook.drawee.backends.pipeline.Fresco;
+import com.facebook.drawee.backends.pipeline.PipelineDraweeController;
 import com.facebook.drawee.view.SimpleDraweeView;
 import com.facebook.imagepipeline.common.ResizeOptions;
 import com.facebook.imagepipeline.request.ImageRequest;
 import com.facebook.imagepipeline.request.ImageRequestBuilder;
+import com.facebook.imagepipeline.request.Postprocessor;
 import com.google.android.material.snackbar.Snackbar;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+
+import jp.wasabeef.fresco.processors.BlurPostprocessor;
 
 public class DocumentListAdapter extends RecyclerView.Adapter<DocumentListAdapter.ViewHolder> implements ItemTouchHelperAdapter {
     private ArrayList<Document> mData; //currently shown list of documents
@@ -38,12 +47,16 @@ public class DocumentListAdapter extends RecyclerView.Adapter<DocumentListAdapte
     private int sortMode = SORT_MODE_ALPHA_ASC;
 
     private Context mContext;
+    private Postprocessor blurPostProcessor;
+    private boolean selectMode = false;
+    private int selectedDocs = 0;
 
     // data is passed into the constructor
     DocumentListAdapter(Context context, ArrayList<Document> data) {
         mInflater = LayoutInflater.from(context);
         mDataFull = new ArrayList<>(data);
         mData = new ArrayList<>(mDataFull);
+        this.blurPostProcessor =new BlurPostprocessor(context, 10);
         mContext = context;
         sort(false);
     }
@@ -59,6 +72,7 @@ public class DocumentListAdapter extends RecyclerView.Adapter<DocumentListAdapte
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
         Document doc = mData.get(position);
+        holder.checkmark.setVisibility(doc.getSelected() ? View.VISIBLE : View.INVISIBLE);
         holder.name.setText(doc.getDocumentName());
         holder.date.setText(doc.getLastUpdatedDate());
         holder.pages.setText(doc.getPages());
@@ -66,9 +80,14 @@ public class DocumentListAdapter extends RecyclerView.Adapter<DocumentListAdapte
         for(File page : f.listFiles()) {
             if(page.getName().equals("0_modded.jpg")) {
                 Uri uri = Uri.parse("file://" + page.getPath());
-                ImageRequest request = ImageRequestBuilder.newBuilderWithSource(uri)
-                        .setResizeOptions(new ResizeOptions(120, 120))
-                        .build();
+                ImageRequest request = selectMode ?
+                        ImageRequestBuilder.newBuilderWithSource(uri)
+                                .setResizeOptions(new ResizeOptions(120, 120))
+                                //.setPostprocessor(blurPostProcessor)
+                                .build() :
+                        ImageRequestBuilder.newBuilderWithSource(uri)
+                                .setResizeOptions(new ResizeOptions(120, 120))
+                                .build();
                 holder.frescoPreview.setImageRequest(request);
                 break;
             }
@@ -84,6 +103,7 @@ public class DocumentListAdapter extends RecyclerView.Adapter<DocumentListAdapte
 
     // stores and recycles views as they are scrolled off screen
     public class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener, View.OnLongClickListener {
+        ImageView checkmark;
         TextView name;
         TextView date;
         TextView pages;
@@ -93,6 +113,7 @@ public class DocumentListAdapter extends RecyclerView.Adapter<DocumentListAdapte
 
         ViewHolder(View itemView) {
             super(itemView);
+            checkmark = itemView.findViewById(R.id.image_overlay);
             name = itemView.findViewById(R.id.document_list_name);
             date = itemView.findViewById(R.id.document_list_date_time);
             pages = itemView.findViewById(R.id.document_list_pages);
@@ -108,12 +129,21 @@ public class DocumentListAdapter extends RecyclerView.Adapter<DocumentListAdapte
                 shouldNormalClick = true;
                 return;
             }
-            if (mClickListener != null) mClickListener.onItemClick(view, getAdapterPosition());
+            if (mClickListener != null && !selectMode) mClickListener.onItemClick(view, getAdapterPosition(), false);
+            else {
+                checkmark.setVisibility(checkmark.getVisibility() == View.VISIBLE ? View.INVISIBLE : View.VISIBLE);
+                selectedDocs += checkmark.getVisibility() == View.VISIBLE ? 1 : -1;
+                mData.get(getAdapterPosition()).setSelected(checkmark.getVisibility() == View.VISIBLE);
+                mClickListener.onItemClick(view, getAdapterPosition(), true);
+            }
         }
 
         @Override
         public boolean onLongClick(View view) {
             if (mClickListener != null) {
+                checkmark.setVisibility(checkmark.getVisibility() == View.VISIBLE ? View.INVISIBLE : View.VISIBLE);
+                selectedDocs += checkmark.getVisibility() == View.VISIBLE ? 1 : -1;
+                mData.get(getAdapterPosition()).setSelected(checkmark.getVisibility() == View.VISIBLE);
                 mClickListener.onItemLongClick(view, getAdapterPosition());
                 shouldNormalClick = false;
             }
@@ -175,7 +205,7 @@ public class DocumentListAdapter extends RecyclerView.Adapter<DocumentListAdapte
 
     // parent activity will implement this method to respond to click events
     public interface ItemClickListener {
-        void onItemClick(View view, int position);
+        void onItemClick(View view, int position, boolean isSelecting);
 
         void onItemLongClick(View view, int position);
     }
@@ -236,6 +266,22 @@ public class DocumentListAdapter extends RecyclerView.Adapter<DocumentListAdapte
         }
         sort(false);
         notifyDataSetChanged();
+    }
+
+    public void resetSelected() {
+        setSelect(false);
+        selectedDocs = 0;
+        for (Document d : mDataFull) {
+            d.setSelected(false);
+        }
+    }
+
+    public void setSelect(boolean selectMode) {
+        this.selectMode = selectMode;
+    }
+
+    public int getSelected() {
+        return selectedDocs;
     }
 
     public void toggleShowArchived(boolean shouldShow) {

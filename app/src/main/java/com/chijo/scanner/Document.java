@@ -8,6 +8,7 @@ class Document {
     private String lastUpdatedDate;
     private String pages;
     private String isArchived = "false";
+    private DisplayData uiData;
 
     public Document(String path, String documentName, String lastUpdatedDate, String pages, Bitmap imagePreview, String isArchived) {
         this.path = path;
@@ -15,6 +16,7 @@ class Document {
         this.lastUpdatedDate = lastUpdatedDate;
         this.pages = pages;
         this.isArchived = isArchived;
+        uiData = new DisplayData();
     }
 
     public String getPath() {
@@ -44,5 +46,13 @@ class Document {
 
     boolean search(String text) {
         return documentName.toLowerCase().contains(text.toLowerCase());
+    }
+
+    boolean getSelected() {
+        return uiData.checked;
+    }
+
+    void setSelected(boolean checked) {
+        uiData.checked = checked;
     }
 }
