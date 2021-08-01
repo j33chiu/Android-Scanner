@@ -6,7 +6,10 @@ import android.view.View;
 import android.view.ViewGroup;
 
 public class ViewAnimations {
-    public static boolean archiveFabMove(final View view, boolean moveDown) {
+
+    private static final int defaultYDist = 255;
+
+    public static boolean fabMove(final View view, boolean moveDown) {
         ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams)view.getLayoutParams();
         view.animate().setDuration(150)
                 .setListener(new AnimatorListenerAdapter() {
@@ -15,7 +18,7 @@ public class ViewAnimations {
                         super.onAnimationEnd(animation);
                     }
                 })
-                .translationY(moveDown ? lp.bottomMargin - lp.rightMargin : 0);
+                .translationY(moveDown ? defaultYDist - lp.rightMargin : 0);
         return moveDown;
     }
 }

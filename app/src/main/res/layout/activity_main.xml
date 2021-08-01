@@ -44,4 +44,40 @@
         android:layout_marginEnd="16dp"
         app:srcCompat="@drawable/ic_show_archive" />
 
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/merge_fab"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        app:fabSize="normal"
+        android:scaleType="center"
+        android:layout_marginBottom="154dp"
+        android:layout_marginEnd="16dp"
+        android:visibility="invisible"
+        app:srcCompat="@drawable/ic_merge_24" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/group_archive_fab"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        app:fabSize="normal"
+        android:scaleType="center"
+        android:layout_marginBottom="223dp"
+        android:layout_marginEnd="16dp"
+        android:visibility="invisible"
+        app:srcCompat="@drawable/ic_delete_24" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/group_restore_fab"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        app:fabSize="normal"
+        android:scaleType="center"
+        android:layout_marginBottom="292dp"
+        android:layout_marginEnd="16dp"
+        android:visibility="invisible"
+        app:srcCompat="@drawable/ic_restore_24" />
+
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

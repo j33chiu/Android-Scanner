@@ -30,6 +30,8 @@ import android.text.Spanned;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.Toast;
+
 import org.opencv.android.OpenCVLoader;
 
 import java.io.BufferedReader;
@@ -42,7 +44,7 @@ import java.util.ArrayList;
 public class DocumentListActivity extends AppCompatActivity implements DocumentListAdapter.ItemClickListener{
 
     private DocumentListAdapter documentListAdapter;
-    private ArrayList<Document> documents = new ArrayList<>();
+    private final ArrayList<Document> documents = new ArrayList<>();
 
     private final int STORAGE_WRITE_REQUEST_CODE = 1;
     private final int STORAGE_READ_REQUEST_CODE = 2;
@@ -50,6 +52,13 @@ public class DocumentListActivity extends AppCompatActivity implements DocumentL
     private final int DOCUMENT_OPEN_REQUEST_CODE = 2;
 
     private final int CAMERA_LAUNCH_MODE = 0;
+
+    //fabs
+    private FloatingActionButton fab;
+    private FloatingActionButton archiveFab;
+    private FloatingActionButton groupArchiveFab;
+    private FloatingActionButton mergeFab;
+    private FloatingActionButton groupRestoreFab;
 
     private ItemTouchHelper.Callback callback;
 
@@ -84,7 +93,31 @@ public class DocumentListActivity extends AppCompatActivity implements DocumentL
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        FloatingActionButton fab = findViewById(R.id.fab);
+        groupRestoreFab = findViewById(R.id.group_restore_fab);
+        groupRestoreFab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                groupRestore();
+            }
+        });
+
+        groupArchiveFab = findViewById(R.id.group_archive_fab);
+        groupArchiveFab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                groupDelete();
+            }
+        });
+
+        mergeFab = findViewById(R.id.merge_fab);
+        mergeFab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                mergeSelected();
+            }
+        });
+
+        fab = findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -92,25 +125,27 @@ public class DocumentListActivity extends AppCompatActivity implements DocumentL
             }
         });
 
-        FloatingActionButton archiveFab = findViewById(R.id.archive_toggle_fab);
+        archiveFab = findViewById(R.id.archive_toggle_fab);
         archiveFab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 archiveMode = !archiveMode;
                 //reset selected
-                documentListAdapter.resetSelected();
-                ((ItemTouchHelperCallback2)callback).setItemViewSwipeEnabled(true);
-                //done resetting
+                resetSelected();
                 documentListAdapter.toggleShowArchived(archiveMode);
-                if(archiveMode) {
+                if(archiveMode) { //set to archive mode
                     fab.hide();
-                    ViewAnimations.archiveFabMove(view, true);
-                    toolbar.setTitle(R.string.action_label_archive);
+                    ViewAnimations.fabMove(view, true);
+                    ViewAnimations.fabMove(groupArchiveFab, true);
+                    ViewAnimations.fabMove(mergeFab, true);
+                    ViewAnimations.fabMove(groupRestoreFab, true);
                 }
                 else {
                     fab.show();
-                    ViewAnimations.archiveFabMove(view, false);
-                    toolbar.setTitle(R.string.action_label_documents);
+                    ViewAnimations.fabMove(view, false);
+                    ViewAnimations.fabMove(groupArchiveFab, false);
+                    ViewAnimations.fabMove(mergeFab, false);
+                    ViewAnimations.fabMove(groupRestoreFab, false);
                 }
             }
         });
@@ -241,6 +276,9 @@ public class DocumentListActivity extends AppCompatActivity implements DocumentL
             if (selected == 0) {
                 documentListAdapter.setSelect(false);
                 ((ItemTouchHelperCallback2)callback).setItemViewSwipeEnabled(true);
+                groupArchiveFab.hide();
+                mergeFab.hide();
+                groupRestoreFab.hide();
                 Toolbar tb = findViewById(R.id.toolbar);
                 tb.setTitle(archiveMode ? R.string.action_label_archive : R.string.action_label_documents);
             } else {
@@ -256,13 +294,18 @@ public class DocumentListActivity extends AppCompatActivity implements DocumentL
 
     @Override
     public void onItemLongClick(View view, int position) {
-        //TODO: allow merging, group archiving
         documentListAdapter.setSelect(true);
         ((ItemTouchHelperCallback2)callback).setItemViewSwipeEnabled(false);
+        groupArchiveFab.show();
+        mergeFab.show();
+        if(archiveMode) groupRestoreFab.show();
         int selected = documentListAdapter.getSelected();
         if (selected == 0) {
             documentListAdapter.setSelect(false);
             ((ItemTouchHelperCallback2)callback).setItemViewSwipeEnabled(true);
+            groupArchiveFab.hide();
+            mergeFab.hide();
+            groupRestoreFab.show();
             Toolbar tb = findViewById(R.id.toolbar);
             tb.setTitle(archiveMode ? R.string.action_label_archive : R.string.action_label_documents);
         } else {
@@ -276,6 +319,47 @@ public class DocumentListActivity extends AppCompatActivity implements DocumentL
         intent.putExtra("documentName", docName);
         intent.putExtra("path", docPath);
         startActivityForResult(intent, DOCUMENT_OPEN_REQUEST_CODE);
+    }
+
+    private void resetSelected() {
+        documentListAdapter.resetSelected();
+        ((ItemTouchHelperCallback2)callback).setItemViewSwipeEnabled(true);
+        groupArchiveFab.hide();
+        mergeFab.hide();
+        groupRestoreFab.hide();
+        Toolbar tb = findViewById(R.id.toolbar);
+        tb.setTitle(archiveMode ? R.string.action_label_archive : R.string.action_label_documents);
+    }
+
+    private void groupRestore() {
+        if(!archiveMode) {
+            return;
+        }
+        ArrayList<Document> selected = documentListAdapter.getSelectedDocs();
+        for (Document d : selected) {
+            documentListAdapter.restore(d);
+        }
+        resetSelected();
+    }
+
+    private void groupDelete() {
+        ArrayList<Document> selected = documentListAdapter.getSelectedDocs();
+        for (Document d : selected) {
+            documentListAdapter.mimicSwipe(d);
+        }
+        resetSelected();
+    }
+
+    private void mergeSelected() {
+        ArrayList<Document> selected = documentListAdapter.getSelectedDocs();
+        try {
+            Document newDoc = FileHelper.mergeDocuments(selected);
+            documents.add(newDoc);
+            documentListAdapter.addDocument(newDoc);
+        } catch (IOException e) {
+            Toast.makeText(this, "Error merging documents...", Toast.LENGTH_LONG).show();
+        }
+        resetSelected();
     }
 
     private void storagePermissionCheck() {

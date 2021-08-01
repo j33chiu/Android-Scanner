@@ -48,6 +48,7 @@ public class DocumentListAdapter extends RecyclerView.Adapter<DocumentListAdapte
 
     private Context mContext;
     private Postprocessor blurPostProcessor;
+    private boolean archiveMode = false;
     private boolean selectMode = false;
     private int selectedDocs = 0;
 
@@ -56,7 +57,7 @@ public class DocumentListAdapter extends RecyclerView.Adapter<DocumentListAdapte
         mInflater = LayoutInflater.from(context);
         mDataFull = new ArrayList<>(data);
         mData = new ArrayList<>(mDataFull);
-        this.blurPostProcessor =new BlurPostprocessor(context, 10);
+        this.blurPostProcessor = new BlurPostprocessor(context, 10);
         mContext = context;
         sort(false);
     }
@@ -170,15 +171,40 @@ public class DocumentListAdapter extends RecyclerView.Adapter<DocumentListAdapte
         }
     }
 
+    public void mimicSwipe(Document doc) {
+        int position = mData.indexOf(doc);
+        mData.remove(position);
+        notifyItemRemoved(position);
+        if(doc.isArchived()) {
+            //fully delete from device
+            mDataFull.remove(doc);
+            permDelete(doc);
+        } else {
+            archive(doc);
+        }
+    }
+
+    public void restore(Document doc) {
+        if (!doc.isArchived() || !archiveMode) {
+            return;
+        }
+        int position = mData.indexOf(doc);
+        mData.remove(position);
+        notifyItemRemoved(position);
+        unArchive(doc);
+    }
+
     private void permDelete(Document doc) {
         FileHelper.deleteDocument(doc);
     }
 
     private void archive(Document doc) {
+        doc.setIsArchived("true");
         FileHelper.writeIsArchived(doc, "true");
     }
 
     private void unArchive(Document doc) {
+        doc.setIsArchived("false");
         FileHelper.writeIsArchived(doc, "false");
     }
 
@@ -229,9 +255,10 @@ public class DocumentListAdapter extends RecyclerView.Adapter<DocumentListAdapte
     }
 
     public void addDocument(Document doc) {
+        //TODO: with many documents, constantly sorting after an insertion may cause lag
         mDataFull.add(doc);
         mData.add(doc);
-        sort(false);
+        sort(archiveMode);
         notifyDataSetChanged();
     }
 
@@ -284,7 +311,18 @@ public class DocumentListAdapter extends RecyclerView.Adapter<DocumentListAdapte
         return selectedDocs;
     }
 
+    public ArrayList<Document> getSelectedDocs() {
+        ArrayList<Document> selectedList = new ArrayList<>();
+        for(Document d : mData) {
+            if (d.getSelected()) {
+                selectedList.add(d);
+            }
+        }
+        return selectedList;
+    }
+
     public void toggleShowArchived(boolean shouldShow) {
+        archiveMode = shouldShow;
         mData = new ArrayList<>(mDataFull);
         sort(shouldShow);
         notifyDataSetChanged();

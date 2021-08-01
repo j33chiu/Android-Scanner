@@ -112,6 +112,7 @@ public class DocumentViewAdapter extends RecyclerView.Adapter<DocumentViewAdapte
     }
 
     public void onItemSwiped(int position) {
+        //TODO: fully delete document (perm delete) if no images left
         FileHelper.deleteFile(documentPath, mPageNames.get(position));
         FileHelper.deleteFile(documentPath, mPageNames.get(position).charAt(0) + ".jpg");
         mData.remove(position);

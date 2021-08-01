@@ -39,9 +39,17 @@ class Document {
         return pages;
     }
 
+    void setPages(String pages) {
+        this.pages = pages;
+    }
+
     boolean isArchived() {
         if(isArchived == null) return false;
         return isArchived.equals("true");
+    }
+
+    void setIsArchived(String isArchived) {
+        this.isArchived = isArchived;
     }
 
     boolean search(String text) {

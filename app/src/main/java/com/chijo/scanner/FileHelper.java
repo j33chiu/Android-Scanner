@@ -1,10 +1,19 @@
 package com.chijo.scanner;
 
+import android.graphics.Bitmap;
+
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.channels.FileChannel;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.Locale;
 
 public class FileHelper {
 
@@ -114,6 +123,43 @@ public class FileHelper {
         return renamed;
     }
 
+    public static boolean moveFile(String fromPath, String toPath, String fileName) {
+        File fromFolder = new File(fromPath);
+        File toFolder = new File(toPath);
+        if(!fromFolder.exists() || !toFolder.exists()) return false;
+        for(File f : fromFolder.listFiles()) {
+            if (f.getName().equals(fileName)) {
+                f.renameTo(new File(toPath + "/" + fileName));
+                break;
+            }
+        }
+        return true;
+    }
+
+    public static boolean copyFile(String fromPath, String toPath, String fileName) throws IOException {
+        File fromFolder = new File(fromPath);
+        File toFolder = new File(toPath);
+        if(!fromFolder.exists() || !toFolder.exists()) return false;
+        for(File f : fromFolder.listFiles()) {
+            if (f.getName().equals(fileName)) {
+                File copyTo = new File(toPath + "/" + fileName);
+
+                FileChannel src = null;
+                FileChannel dest = null;
+                try {
+                    src = new FileInputStream(f).getChannel();
+                    dest = new FileOutputStream(copyTo).getChannel();
+                    dest.transferFrom(src, 0, src.size());
+                } finally {
+                    if (src != null) src.close();
+                    if (dest != null) dest.close();
+                }
+                break;
+            }
+        }
+        return true;
+    }
+
     public static boolean deleteFile(String documentPath, String deleteName) {
         File documentFolder = new File(documentPath);
         if(!documentFolder.exists()) return false;
@@ -152,6 +198,53 @@ public class FileHelper {
         int i = filename.lastIndexOf(".");
         if (i == -1) return filename;
         return filename.substring(0, i);
+    }
+
+    public static Document mergeDocuments(ArrayList<Document> docList) throws IOException {
+        if (docList.size() < 2) return null;
+        //copy d1 to new document
+        Document d1 = docList.get(0);
+        String doc1Path = d1.getPath();
+        File doc1File = new File(doc1Path);
+        if (!doc1File.exists()) return null;
+
+        String copyDocPath = AppConstants.DOCUMENT_SAVE_LOCATION + System.currentTimeMillis();
+        File f = new File(copyDocPath);
+        f.mkdirs();
+        tempName = "merge_" + System.currentTimeMillis();
+        tempDate = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(new Date());
+        tempPages = d1.getPages();
+        tempArchived = d1.isArchived() ? "true" : "false";
+        Document newDoc = new Document(copyDocPath, tempName, tempDate, d1.getPages(), null, tempArchived);
+        for (File toCopy : doc1File.listFiles()) {
+            copyFile(doc1Path, copyDocPath, toCopy.getName());
+        }
+        //adds d2 to end of d1 copy
+        int page = (doc1File.listFiles().length - 1) / 2;
+        for (int i = 1; i < docList.size(); i++) {
+            Document d = docList.get(i);
+            String path = d.getPath();
+            File file = new File(path);
+            if (!file.exists()) continue;
+            File[] files = file.listFiles();
+            if (files == null || files.length == 0) continue;
+            for (int j = 0; j < (files.length - 1) / 2; j++) {
+                //rename
+                renameFile(path, j + ".jpg", page + ".jpg");
+                renameFile(path, j + "_modded.jpg", page + "_modded.jpg");
+                //copy
+                copyFile(path, copyDocPath, page + ".jpg");
+                copyFile(path, copyDocPath, page + "_modded.jpg");
+                //rename back
+                renameFile(path, page + ".jpg", j + ".jpg");
+                renameFile(path, page + "_modded.jpg", j + "_modded.jpg");
+                page++;
+            }
+        }
+        tempPages = page + (page == 1 ? " page" : " pages");
+        writeAll(newDoc);
+        newDoc.setPages(tempPages);
+        return newDoc;
     }
 
 }
