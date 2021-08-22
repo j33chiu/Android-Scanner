@@ -9,6 +9,7 @@ import android.media.ExifInterface;
 import android.os.Bundle;
 
 import com.chijo.scanner.itemTouchHelper.ItemTouchHelperCallback;
+import com.chijo.scanner.pageviewer.PhotoViewActivity;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.textfield.TextInputEditText;
@@ -20,6 +21,8 @@ import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.text.InputFilter;
 import android.text.Spanned;
 import android.view.Menu;
@@ -28,6 +31,7 @@ import android.view.View;
 import android.widget.Toast;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -70,9 +74,11 @@ public class DocumentViewActivity extends AppCompatActivity implements DocumentV
     private final int CAMERA_LAUNCH_REQUEST_CODE = 1;
     private final int CAMERA_LAUNCH_MODE = 1;
 
+    private final int EDIT_PICTURE_REQUEST_CODE = 2;
+
     private ItemTouchHelper itemTouchHelper;
 
-    //TODO: jump to activity of editing of each page
+    //TODO: add ability to "read" text from document pages: viewable from edit screen, highlightable/copyable
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -158,6 +164,11 @@ public class DocumentViewActivity extends AppCompatActivity implements DocumentV
                 }
             }
         }
+        else if (requestCode == EDIT_PICTURE_REQUEST_CODE) {
+            if (resultCode != Activity.RESULT_OK) {
+                //pictures edited
+            }
+        }
     }
 
     private void loadPages() {
@@ -175,27 +186,7 @@ public class DocumentViewActivity extends AppCompatActivity implements DocumentV
                 bitmapOptions.inSampleSize = 8;
                 pages.add(BitmapFactory.decodeFile(f.getPath(), bitmapOptions));*/
 
-                int orientation = -1;
-                Matrix m = new Matrix();
-                try {
-                    ExifInterface exif = new ExifInterface(f.getPath());
-                    orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, 1);
-                    if(orientation == ExifInterface.ORIENTATION_ROTATE_90) m.postRotate(90);
-                    else if(orientation == ExifInterface.ORIENTATION_ROTATE_180) m.postRotate(180);
-                    else if(orientation == ExifInterface.ORIENTATION_ROTATE_270) m.postRotate(270);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                BitmapFactory.Options options = new BitmapFactory.Options();
-                options.inJustDecodeBounds = true;
-                BitmapFactory.decodeFile(f.getPath(), options);
-                int scale = 8;
-                BitmapFactory.Options loadOptions = new BitmapFactory.Options();
-                loadOptions.inSampleSize = scale;
-                Bitmap loaded = BitmapFactory.decodeFile(f.getPath(), loadOptions);
-                if(orientation != -1) {
-                    loaded = Bitmap.createBitmap(loaded, 0, 0, loaded.getWidth(), loaded.getHeight(), m, true);
-                }
+                Bitmap loaded = FileHelper.getBitmap(f.getPath());
                 pages.add(loaded);
                 pageNames.add(f.getName());
             }
@@ -216,14 +207,18 @@ public class DocumentViewActivity extends AppCompatActivity implements DocumentV
 
     @Override
     public void onItemClick(View view, int position) {
-        Bitmap page = documentViewAdapter.getItem(position);
-        //TODO: open edit activity
-        System.out.println("Normal click");
+        //try sending document path and page, then in edit activity load the bitmaps in the background
+        Intent editActivity = new Intent(this, PhotoViewActivity.class);
+        editActivity.putExtra("documentPath", documentPath);
+        editActivity.putExtra("pagePosition", position);
+        editActivity.putExtra("totalPages", documentViewAdapter.getItemCount());
+
+        startActivityForResult(editActivity, EDIT_PICTURE_REQUEST_CODE);
     }
 
     @Override
     public void onItemLongClick(View view, int position) {
-        System.out.println("Long click");
+        //Toast.makeText(this, "long click", Toast.LENGTH_SHORT).show();
     }
 
     @Override

@@ -1,6 +1,9 @@
 package com.chijo.scanner;
 
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
+import android.media.ExifInterface;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -21,6 +24,8 @@ public class FileHelper {
     private static String tempDate = "";
     private static String tempPages = "";
     private static String tempArchived = "";
+
+    private static final int BITMAP_DEFAULT_SCALE = 8;
 
     private FileHelper() {
 
@@ -245,6 +250,43 @@ public class FileHelper {
         writeAll(newDoc);
         newDoc.setPages(tempPages);
         return newDoc;
+    }
+
+    public static Bitmap getBitmap(String pathToFile) {
+        return getBitmap(pathToFile, BITMAP_DEFAULT_SCALE);
+    }
+
+    public static Bitmap getBitmap(String pathToFile, int scale) {
+        File f = new File(pathToFile);
+        if (!f.exists()) {
+            return null;
+        }
+        if (!f.getName().contains(".jpg")) {
+            return null;
+        }
+
+        int orientation = -1;
+        Matrix m = new Matrix();
+        try {
+            ExifInterface exif = new ExifInterface(f.getPath());
+            orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, 1);
+            if(orientation == ExifInterface.ORIENTATION_ROTATE_90) m.postRotate(90);
+            else if(orientation == ExifInterface.ORIENTATION_ROTATE_180) m.postRotate(180);
+            else if(orientation == ExifInterface.ORIENTATION_ROTATE_270) m.postRotate(270);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(f.getPath(), options);
+        BitmapFactory.Options loadOptions = new BitmapFactory.Options();
+        loadOptions.inSampleSize = scale;
+        Bitmap loaded = BitmapFactory.decodeFile(f.getPath(), loadOptions);
+        if(orientation != -1) {
+            loaded = Bitmap.createBitmap(loaded, 0, 0, loaded.getWidth(), loaded.getHeight(), m, true);
+        }
+
+        return loaded;
     }
 
 }

@@ -83,7 +83,7 @@ import java.util.concurrent.ExecutionException;
 public class CameraActivity2 extends AppCompatActivity {
 
     //mode
-    private int operationMode = 0; //0: new document, 1: adding to existing document
+    private int operationMode = 0; //0: new document, 1: adding to existing document, 2: dev mode
     //perms
     private final int CAMERA_REQUEST_CODE = 1;
     //result
@@ -138,9 +138,25 @@ public class CameraActivity2 extends AppCompatActivity {
         Bundle extras = getIntent().getExtras();
         operationMode = extras.getInt("mode");
 
-        docName = operationMode == 0 ? "" : extras.getString("docName");
-        documentFolderPath = operationMode == 0 ? AppConstants.DOCUMENT_SAVE_LOCATION + System.currentTimeMillis() + "/" : extras.getString("path");
-        priorPictures = operationMode == 0 ? 0 : extras.getInt("priorPictures");
+        switch (operationMode) {
+            default:
+                break;
+            case 0:
+                docName = "";
+                documentFolderPath = AppConstants.DOCUMENT_SAVE_LOCATION + System.currentTimeMillis() + "/";
+                priorPictures = 0;
+                break;
+            case 1:
+                docName = extras.getString("docName");
+                documentFolderPath = extras.getString("path");
+                priorPictures = extras.getInt("priorPictures");
+                break;
+            case 2:
+                docName = "";
+                documentFolderPath = AppConstants.DEV_SAVE_LOCATION;
+                priorPictures = 0;
+                break;
+        }
         previewView = (PreviewView) findViewById(R.id.camera_preview_view);
         takePictureButton = (Button) findViewById(R.id.button_take_picture);
         doneButton = (Button) findViewById(R.id.button_done_pictures);
@@ -250,6 +266,16 @@ public class CameraActivity2 extends AppCompatActivity {
         Imgproc.medianBlur(output, output, 11);
         Imgproc.Canny(output, output, 200, 250);
         Imgproc.dilate(output, output, new Mat(), new Point(-1, 1), 1);
+        //get straight lines from edges
+        Mat linesOutput = new Mat(output.rows(), output.cols(), output.type(), new Scalar(0, 0, 0));
+        Mat houghLines = new Mat();
+        Imgproc.HoughLinesP(output, houghLines, 1, Math.PI/180, 100, 150, 20);
+        for (int x = 0; x < houghLines.rows(); x++) {
+            double[] l = houghLines.get(x, 0);
+            Imgproc.line(linesOutput, new Point(l[0], l[1]), new Point(l[2], l[3]), new Scalar(255, 255, 255), 3, Imgproc.LINE_AA, 0);
+        }
+        //overlay preprocessed with lines image:
+
 
         //find contours:
         List<MatOfPoint> contours = new ArrayList<>();
@@ -300,8 +326,12 @@ public class CameraActivity2 extends AppCompatActivity {
                 cameraOverlay.clear();
             }
         }
-        //Utils.matToBitmap(mat, originalImage);
-        //pictureImageView.setImageBitmap(originalImage);
+        if (operationMode == 2) { //dev mode
+            //Utils.matToBitmap(output, originalImage); //preprocessed
+            Utils.matToBitmap(linesOutput, originalImage); //hough lines
+            //Utils.matToBitmap(mat, originalImage); //overlay
+            pictureImageView.setImageBitmap(originalImage);
+        }
     }
 
     private void getQuadrilateralEdges(int rotationDegrees, Size size, List<Point> corners) {

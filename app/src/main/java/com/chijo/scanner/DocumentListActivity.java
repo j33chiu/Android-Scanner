@@ -52,6 +52,7 @@ public class DocumentListActivity extends AppCompatActivity implements DocumentL
     private final int DOCUMENT_OPEN_REQUEST_CODE = 2;
 
     private final int CAMERA_LAUNCH_MODE = 0;
+    private final int DEV_CAMERA_LAUNCH_MODE = 2;
 
     //fabs
     private FloatingActionButton fab;
@@ -121,7 +122,17 @@ public class DocumentListActivity extends AppCompatActivity implements DocumentL
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                Toast.makeText(DocumentListActivity.this, "tap", Toast.LENGTH_SHORT).show();
                 openCamera();
+            }
+        });
+
+        fab.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View view) {
+                Toast.makeText(DocumentListActivity.this, "long tap", Toast.LENGTH_SHORT).show();
+                openDevCamera();
+                return true;
             }
         });
 
@@ -225,6 +236,12 @@ public class DocumentListActivity extends AppCompatActivity implements DocumentL
     private void openCamera() {
         Intent intent = new Intent(this, CameraActivity2.class);
         intent.putExtra("mode", CAMERA_LAUNCH_MODE);
+        startActivityForResult(intent, CAMERA_LAUNCH_REQUEST_CODE);
+    }
+
+    private void openDevCamera() {
+        Intent intent = new Intent(this, CameraActivity2.class);
+        intent.putExtra("mode", DEV_CAMERA_LAUNCH_MODE);
         startActivityForResult(intent, CAMERA_LAUNCH_REQUEST_CODE);
     }
 

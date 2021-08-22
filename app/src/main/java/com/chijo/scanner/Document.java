@@ -2,7 +2,7 @@ package com.chijo.scanner;
 
 import android.graphics.Bitmap;
 
-class Document {
+public class Document {
     private String path;
     private String documentName;
     private String lastUpdatedDate;
