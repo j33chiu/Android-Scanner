@@ -16,6 +16,8 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.concurrent.Executors;
 
+import static com.chijo.scanner.AppConstants.TRANSFORMER_TYPE_ZOOM_OUT;
+
 public class PhotoViewActivity extends AppCompatActivity {
 
     private ViewPager2 viewPager2;
@@ -42,6 +44,7 @@ public class PhotoViewActivity extends AppCompatActivity {
         Bitmap[] bitmapPages = backgroundImageLoad();
 
         viewPager2 = findViewById(R.id.document_view_pager2);
+        viewPager2.setPageTransformer(new PageAnimator(TRANSFORMER_TYPE_ZOOM_OUT));
         pageViewerAdapter = new PageViewerAdapter(this, bitmapPages, currentPosition);
         viewPager2.setAdapter(pageViewerAdapter);
         viewPager2.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
