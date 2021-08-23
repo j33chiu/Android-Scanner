@@ -8,6 +8,7 @@ import android.graphics.Bitmap;
 import android.graphics.Matrix;
 import android.os.Bundle;
 
+import com.chijo.scanner.devCamera.DevCamera;
 import com.chijo.scanner.itemTouchHelper.ItemTouchHelperCallback2;
 import com.facebook.drawee.backends.pipeline.Fresco;
 import com.facebook.imagepipeline.core.ImagePipelineConfig;
@@ -240,9 +241,8 @@ public class DocumentListActivity extends AppCompatActivity implements DocumentL
     }
 
     private void openDevCamera() {
-        Intent intent = new Intent(this, CameraActivity2.class);
-        intent.putExtra("mode", DEV_CAMERA_LAUNCH_MODE);
-        startActivityForResult(intent, CAMERA_LAUNCH_REQUEST_CODE);
+        Intent intent = new Intent(this, DevCamera.class);
+        startActivity(intent);
     }
 
     @Override

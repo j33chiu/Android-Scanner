@@ -51,6 +51,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.LifecycleOwner;
 
+import com.chijo.scanner.imageAnalysis.ImageHelper;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import org.opencv.android.Utils;
@@ -129,6 +130,13 @@ public class CameraActivity2 extends AppCompatActivity {
 
     //TODO: add last picture preview to left of button, allow user to edit that photo (use same activity as the one used when tapping a page in DocumentViewActivity)
     //TODO: add camera options
+    //TODO: try different approaches to detect page edges
+        //1: current approach: contours, edge and corner detection, contour area, smoothing
+        //2: full neural net, train on images with corners defined
+        //3: image preprocessing + neural net
+            // first get contour of largest/most likely area. from contour area, predict corners
+        //4: use colour regions and blurring to highlight different areas in image that are "1" thing
+            // from each region, use 1, 2, or 3 to get corners/edges
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -207,7 +215,7 @@ public class CameraActivity2 extends AppCompatActivity {
             @Override
             public void analyze(@NonNull ImageProxy image) {
                 Mat mat = new Mat();
-                Bitmap imageBM = toBitmap(image);
+                Bitmap imageBM = ImageHelper.toBitmap(image);
                 if(imageBM != null) {
                     Utils.bitmapToMat(imageBM, mat);
                     int rotation = image.getImageInfo().getRotationDegrees();
@@ -226,34 +234,6 @@ public class CameraActivity2 extends AppCompatActivity {
         camera = cameraProvider.bindToLifecycle((LifecycleOwner)this, cameraSelector, imageCapture, imageAnalysis, preview);
         cameraControl = camera.getCameraControl();
 
-    }
-
-    private Bitmap toBitmap(ImageProxy image) {
-        if(image.getFormat() != ImageFormat.YUV_420_888) {
-            return null;
-        }
-        @SuppressLint("UnsafeOptInUsageError") Image i = image.getImage();
-        Image.Plane[] planes = i.getPlanes();
-        ByteBuffer yBuffer = planes[0].getBuffer();
-        ByteBuffer uBuffer = planes[1].getBuffer();
-        ByteBuffer vBuffer = planes[2].getBuffer();
-
-        int ySize = yBuffer.remaining();
-        int uSize = uBuffer.remaining();
-        int vSize = vBuffer.remaining();
-
-        byte[] nv21 = new byte[ySize + uSize + vSize];
-        //U and V are swapped
-        yBuffer.get(nv21, 0, ySize);
-        vBuffer.get(nv21, ySize, vSize);
-        uBuffer.get(nv21, ySize + vSize, uSize);
-
-        YuvImage yuvImage = new YuvImage(nv21, ImageFormat.NV21, i.getWidth(), i.getHeight(), null);
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        yuvImage.compressToJpeg(new Rect(0, 0, yuvImage.getWidth(), yuvImage.getHeight()), 75, out);
-
-        byte[] imageBytes = out.toByteArray();
-        return BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
     }
 
     private void quadrilateralDetection(int rotationDegrees, Bitmap originalImage, Mat mat) {
