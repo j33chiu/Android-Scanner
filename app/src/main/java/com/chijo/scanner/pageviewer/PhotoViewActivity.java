@@ -7,10 +7,13 @@ import android.view.MenuItem;
 import android.view.View;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.viewpager.widget.ViewPager;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.chijo.scanner.FileHelper;
 import com.chijo.scanner.R;
+import com.chijo.scanner.ViewAnimations;
+import com.google.android.material.tabs.TabLayout;
 
 import java.io.File;
 import java.util.Arrays;
@@ -27,6 +30,9 @@ public class PhotoViewActivity extends AppCompatActivity {
     private String documentPath = "";
 
     private final int BITMAP_DISPLAY_SCALE = 1; // use full scale load
+
+    private TabLayout tabLayout;
+    private ViewPager viewPager;
 
     //TODO: add edit options (filters, recrop, enhancing)
 
@@ -59,6 +65,12 @@ public class PhotoViewActivity extends AppCompatActivity {
 
             }
         });
+
+        //setup ui menu
+        setupUIMenu();
+        //setup tablayout
+        setupTabLayout();
+
     }
 
     @Override
@@ -71,6 +83,76 @@ public class PhotoViewActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(MenuItem item) {
 
         return super.onOptionsItemSelected(item);
+    }
+
+    private void setupUIMenu() {
+        viewPager = findViewById(R.id.ui_menu_view_pager);
+        UIMenuPagerAdapter adapter = new UIMenuPagerAdapter();
+        adapter.insertViewId(R.id.page_one);
+        adapter.insertViewId(R.id.page_two);
+        adapter.insertViewId(R.id.page_three);
+        viewPager.setAdapter(adapter);
+        viewPager.setOffscreenPageLimit(3);
+    }
+
+    private boolean showingMenu = false;
+
+    private void setupTabLayout() {
+        tabLayout = findViewById(R.id.tabLayout);
+        tabLayout.setupWithViewPager(viewPager);
+
+        //set titles
+        TabLayout.Tab editTab = tabLayout.getTabAt(0);
+        editTab.setText("EDIT");
+        TabLayout.Tab filterTab = tabLayout.getTabAt(1);
+        filterTab.setText("FILTER");
+        TabLayout.Tab formatTab = tabLayout.getTabAt(2);
+        formatTab.setText("FORMAT");
+
+        tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+            @Override
+            public void onTabSelected(TabLayout.Tab tab) {
+                if (!showingMenu) {
+                    int pos = tab.getPosition();
+                    switch (pos) {
+                        case 0:
+                            ViewAnimations.pageViewUIMove(findViewById(R.id.edit_page_ll), viewPager, tabLayout, true);
+                            break;
+                        case 1:
+                            ViewAnimations.pageViewUIMove(findViewById(R.id.filter_page_ll), viewPager, tabLayout, true);
+                            break;
+                        case 2:
+                            ViewAnimations.pageViewUIMove(findViewById(R.id.format_page_ll), viewPager, tabLayout, true);
+                            break;
+                    }
+                    showingMenu = true;
+                }
+            }
+
+            @Override
+            public void onTabUnselected(TabLayout.Tab tab) {
+
+            }
+
+            @Override
+            public void onTabReselected(TabLayout.Tab tab) {
+                if (showingMenu) {
+                    int pos = tab.getPosition();
+                    switch (pos) {
+                        case 0:
+                            ViewAnimations.pageViewUIMove(findViewById(R.id.ui_edit_page), viewPager, tabLayout, false);
+                            break;
+                        case 1:
+                            ViewAnimations.pageViewUIMove(findViewById(R.id.ui_filter_page), viewPager, tabLayout, false);
+                            break;
+                        case 2:
+                            ViewAnimations.pageViewUIMove(findViewById(R.id.ui_format_page), viewPager, tabLayout, false);
+                            break;
+                    }
+                    showingMenu = false;
+                }
+            }
+        });
     }
 
     //loads pictures in background so tapped image can be displayed as fast as possible

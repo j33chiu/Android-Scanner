@@ -19,7 +19,7 @@
         <activity
             android:name=".pageviewer.PhotoViewActivity"
             android:label="@string/title_activity_photo_view"
-            android:theme="@style/AppTheme.NoActionBar"></activity>
+            android:theme="@style/AppTheme.NoActionBar" />
         <activity
             android:name=".CameraActivity2"
             android:configChanges="keyboardHidden|orientation|screenSize"

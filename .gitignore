@@ -12,3 +12,4 @@
 /captures
 .externalNativeBuild
 .cxx
+/imageAnalysis/pageObjectDetection/raw_images/.jpg

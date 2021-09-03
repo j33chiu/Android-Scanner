@@ -27,10 +27,10 @@ public class CameraOverlay extends View {
         super(context, attributeSet);
         paint.setStyle(Paint.Style.STROKE);
         paint.setColor(Color.CYAN);
-        paint.setStrokeWidth(20f);
+        paint.setStrokeWidth(10f);
         testPaint.setStyle(Paint.Style.STROKE);
         testPaint.setColor(Color.GREEN);
-        testPaint.setStrokeWidth(25f);
+        testPaint.setStrokeWidth(10f);
     }
 
     @Override

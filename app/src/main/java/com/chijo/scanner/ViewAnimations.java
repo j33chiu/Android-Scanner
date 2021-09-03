@@ -21,4 +21,25 @@ public class ViewAnimations {
                 .translationY(moveDown ? defaultYDist - lp.rightMargin : 0);
         return moveDown;
     }
+
+    public static boolean pageViewUIMove(final View content, final View viewpager, final View tabLayout, boolean shouldShow) {
+        ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams)content.getLayoutParams();
+        tabLayout.animate().setDuration(150)
+                .setListener(new AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationEnd(Animator animation) {
+                        super.onAnimationEnd(animation);
+                    }
+                })
+                .translationY(shouldShow ? -(lp.height) : 200);
+        viewpager.animate().setDuration(150)
+                .setListener(new AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationEnd(Animator animation) {
+                        super.onAnimationEnd(animation);
+                    }
+                })
+                .translationY(shouldShow ? -(lp.height) : 200);
+        return shouldShow;
+    }
 }

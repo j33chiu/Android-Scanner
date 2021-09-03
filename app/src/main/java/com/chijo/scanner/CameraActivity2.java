@@ -76,6 +76,7 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -130,13 +131,6 @@ public class CameraActivity2 extends AppCompatActivity {
 
     //TODO: add last picture preview to left of button, allow user to edit that photo (use same activity as the one used when tapping a page in DocumentViewActivity)
     //TODO: add camera options
-    //TODO: try different approaches to detect page edges
-        //1: current approach: contours, edge and corner detection, contour area, smoothing
-        //2: full neural net, train on images with corners defined
-        //3: image preprocessing + neural net
-            // first get contour of largest/most likely area. from contour area, predict corners
-        //4: use colour regions and blurring to highlight different areas in image that are "1" thing
-            // from each region, use 1, 2, or 3 to get corners/edges
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -158,11 +152,6 @@ public class CameraActivity2 extends AppCompatActivity {
                 docName = extras.getString("docName");
                 documentFolderPath = extras.getString("path");
                 priorPictures = extras.getInt("priorPictures");
-                break;
-            case 2:
-                docName = "";
-                documentFolderPath = AppConstants.DEV_SAVE_LOCATION;
-                priorPictures = 0;
                 break;
         }
         previewView = (PreviewView) findViewById(R.id.camera_preview_view);
@@ -219,7 +208,7 @@ public class CameraActivity2 extends AppCompatActivity {
                 if(imageBM != null) {
                     Utils.bitmapToMat(imageBM, mat);
                     int rotation = image.getImageInfo().getRotationDegrees();
-                    quadrilateralDetection(rotation, imageBM, mat);
+                    betterQuadrilateralDetection(rotation, imageBM, mat);
                 }
                 image.close();
             }
@@ -236,82 +225,73 @@ public class CameraActivity2 extends AppCompatActivity {
 
     }
 
-    private void quadrilateralDetection(int rotationDegrees, Bitmap originalImage, Mat mat) {
-        Mat output = new Mat(mat.size(), mat.type());
-        //preprocessing
-        Imgproc.cvtColor(mat, output, Imgproc.COLOR_BGR2GRAY);
-        Imgproc.pyrDown(output, output, new Size(output.cols()/2, output.rows()/2));
-        Imgproc.pyrUp(output, output, mat.size());
-        Imgproc.adaptiveThreshold(output, output, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY, 115, 4);
-        Imgproc.medianBlur(output, output, 11);
-        Imgproc.Canny(output, output, 200, 250);
-        Imgproc.dilate(output, output, new Mat(), new Point(-1, 1), 1);
-        //get straight lines from edges
-        Mat linesOutput = new Mat(output.rows(), output.cols(), output.type(), new Scalar(0, 0, 0));
-        Mat houghLines = new Mat();
-        Imgproc.HoughLinesP(output, houghLines, 1, Math.PI/180, 100, 150, 20);
-        for (int x = 0; x < houghLines.rows(); x++) {
-            double[] l = houghLines.get(x, 0);
-            Imgproc.line(linesOutput, new Point(l[0], l[1]), new Point(l[2], l[3]), new Scalar(255, 255, 255), 3, Imgproc.LINE_AA, 0);
+    private void betterQuadrilateralDetection(int rotationDegrees, Bitmap originalBM, Mat originalMat) {
+        Mat processedImage = ImageHelper.getImageOutline(originalMat);
+        Mat contourOnly = ImageHelper.findContours(processedImage, originalMat);
+
+        //approximate lines
+        List<Line> lines = ImageHelper.approximateEdges(contourOnly);
+
+        //only keep the 4 longest lines
+        Collections.sort(lines, new Line.LengthComparator());
+        while(lines.size() > 4) {
+            lines.remove(lines.size() - 1);
         }
-        //overlay preprocessed with lines image:
 
-
-        //find contours:
-        List<MatOfPoint> contours = new ArrayList<>();
-        Imgproc.findContours(output, contours, new Mat(), Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE);
-        int maxAreaIdx = -1;
-        double maxArea = -1;
-        MatOfPoint finalContour = null;
-        for(int i = 0; i < contours.size(); i++) {
-            MatOfPoint contour = contours.get(i);
-            double contourArea = Imgproc.contourArea(contour);
-            if(contourArea > maxArea) {
-                maxArea = contourArea;
-                maxAreaIdx = i;
-                finalContour = contour;
+        //process lines for intersections
+        ArrayList<Point> firstCorners = new ArrayList<>();
+        for (int i = 0; i < lines.size() - 1; i++) {
+            for (int j = i + 1; j < lines.size(); j++) {
+                Point intersection = lines.get(i).getIntersection(lines.get(j));
+                if (intersection == null) continue;
+                if (intersection.x > originalMat.width() || intersection.y > originalMat.height()) continue;
+                if (intersection.x < 0 || intersection.y < 0) continue;
+                firstCorners.add(intersection);
             }
         }
-        if(maxAreaIdx != -1) {
-            MatOfPoint2f curve = new MatOfPoint2f(finalContour.toArray());
-            MatOfPoint2f approxCurve = new MatOfPoint2f();
-            Imgproc.approxPolyDP(curve, approxCurve, 0.02 * Imgproc.arcLength(curve, true), true);
-            Imgproc.drawContours(mat, contours, maxAreaIdx, new Scalar(0, 255, 0), 10);
-            for(Point p : approxCurve.toArray()) {
-                Imgproc.drawMarker(mat, p, new Scalar(255, 0, 0), 0, 5, 5);
+        // draw overlay
+        if (firstCorners.size() == 4 && lines.size() == 4) {
+            getQuadrilateralEdges(rotationDegrees, originalMat.size(), firstCorners);
+            cameraOverlay.drawOutline(edges, firstCorners);
+
+            //get area:
+            if (edges.size() != 4) return;
+            Mat temp = new Mat(cameraOverlay.getWidth(), cameraOverlay.getHeight(), originalMat.type(), new Scalar(0, 0, 0));
+            for (int i = 0; i < edges.size(); i++) {
+                Imgproc.line(temp, new Point(edges.get(i).p1.x, edges.get(i).p1.y), new Point(edges.get(i).p2.x, edges.get(i).p2.y), new Scalar(255, 255, 255), 10, Imgproc.LINE_AA, 0);
             }
-            if(approxCurve.total() == 4) {
-                //gotten 4 corners, now get the lines connecting them
-                getQuadrilateralEdges(rotationDegrees, mat.size(), approxCurve.toList());
-                cameraOverlay.drawOutline(edges, corners);
-                //cameraOverlay.test(mat.size(), approxCurve.toList());
-                //cameraOverlay.drawPoints(mat.size(), approxCurve.toList());
-                if(Math.abs(maxArea - trackArea) <= trackArea * trackTolerance) {
-                    //start/continue timer
-                    if(!timerStarted && !stopAuto) {
-                        countDownTimer.start();
-                        timerStarted = true;
-                    }
-                } else {
-                    //stop timer
-                    edges.clear();
-                    corners.clear();
-                    countDownTimer.cancel();
-                    timerStarted = false;
+            List<MatOfPoint> tempContours = new ArrayList<>();
+            Imgproc.cvtColor(temp, temp, Imgproc.COLOR_RGB2GRAY);
+            Imgproc.findContours(temp, tempContours, new Mat(), Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE);
+            double maxArea = -1;
+            for(int i = 0; i < tempContours.size(); i++) {
+                MatOfPoint contour = tempContours.get(i);
+                double contourArea = Imgproc.contourArea(contour);
+                if(contourArea > maxArea) {
+                    maxArea = contourArea;
                 }
-                trackArea = maxArea;
+            }
+            if(Math.abs(maxArea - trackArea) <= trackArea * trackTolerance) {
+                //start/continue timer
+                if(!timerStarted && !stopAuto) {
+                    countDownTimer.start();
+                    timerStarted = true;
+                }
             } else {
+                //stop timer
                 edges.clear();
                 corners.clear();
-                cameraOverlay.clear();
+                countDownTimer.cancel();
+                timerStarted = false;
             }
+            trackArea = maxArea;
+        } else {
+            edges.clear();
+            corners.clear();
+            cameraOverlay.clear();
         }
-        if (operationMode == 2) { //dev mode
-            //Utils.matToBitmap(output, originalImage); //preprocessed
-            Utils.matToBitmap(linesOutput, originalImage); //hough lines
-            //Utils.matToBitmap(mat, originalImage); //overlay
-            pictureImageView.setImageBitmap(originalImage);
-        }
+
+
     }
 
     private void getQuadrilateralEdges(int rotationDegrees, Size size, List<Point> corners) {
@@ -478,7 +458,6 @@ public class CameraActivity2 extends AppCompatActivity {
                             }
                             Point tr = cornersCopy.get(maxDiffIdx);
                             Point bl = cornersCopy.get(minDiffIdx);
-                            System.out.println(tl.x + " " + tl.y);
                             Mat cropped = fourPointTransform(tl, tr, br, bl, file);
                             Imgcodecs.imwrite(fileModified.getPath(), cropped);
                         }
